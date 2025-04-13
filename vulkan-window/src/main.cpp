@@ -1,35 +1,49 @@
-#define GL_SILENCE_DEPRECATION 
+#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-int main(void) {
-  GLFWwindow *window;
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/mat4x4.hpp>
+#include <glm/vec4.hpp>
 
-  /* Initialize the library */
-  if (!glfwInit())
-    return -1;
+#include <iostream>
 
-  /* Create a windowed mode window and its OpenGL context */
-  window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
-  if (!window) {
-    glfwTerminate();
-    return -1;
+int main() {
+  glfwInit();
+
+  glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+  GLFWwindow *window =
+      glfwCreateWindow(800, 600, "Vulkan window", nullptr, nullptr);
+
+  uint32_t count = 0;
+  vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
+
+  VkExtensionProperties *extensions = new VkExtensionProperties[count];
+
+  VkResult result =
+      vkEnumerateInstanceExtensionProperties(nullptr, &count, extensions);
+  if (result != VkResult::VK_SUCCESS) {
+    std::cout << "failure" << "\n";
   }
 
-  /* Make the window's context current */
-  glfwMakeContextCurrent(window);
+  for (uint32_t i = 0; i < count; ++i) {
+    const auto &prop = extensions[i];
+    std::cout << "Extension: " << prop.extensionName << "\n";
+  }
 
-  /* Loop until the user closes the window */
+  // Cleanup
+  delete[] extensions;
+  glm::mat4 matrix;
+  glm::vec4 vec;
+  auto test = matrix * vec;
+
   while (!glfwWindowShouldClose(window)) {
-    /* Render here */
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    /* Swap front and back buffers */
-    glfwSwapBuffers(window);
-
-    /* Poll for and process events */
     glfwPollEvents();
   }
 
+  glfwDestroyWindow(window);
+
   glfwTerminate();
+
   return 0;
 }

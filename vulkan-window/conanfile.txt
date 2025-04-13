@@ -1,5 +1,6 @@
 [requires]
 glfw/3.4
+glm/0.9.9.8
 
 [tool_requires]
 cmake/3.22.6
