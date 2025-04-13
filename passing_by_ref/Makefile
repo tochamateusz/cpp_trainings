@@ -1,7 +1,10 @@
-build:
+prebuild:
+	makdir ./build
+
+build: prebuild
 	clang++ \
 	-std=c++17 \
-	-o main \
+	-o ./build/main \
 	./main.cpp 
  
 
