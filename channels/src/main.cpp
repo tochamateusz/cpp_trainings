@@ -11,6 +11,40 @@ struct Event {
 std::mutex io_mutex;
 std::atomic<bool> running(true);
 
+void input_thread(Channel<Event> &event_channel) {
+  std::string input;
+
+  // Initial prompt
+  {
+    std::lock_guard<std::mutex> lock(io_mutex);
+    std::cout << "Enter command (or 'quit' to exit): " << std::flush;
+  }
+
+  while (running) {
+    if (std::getline(std::cin, input)) { // Check if getline succeeded
+      {
+        std::lock_guard<std::mutex> lock(io_mutex);
+        event_channel.send(Event{.type = input});
+      }
+
+      if (input == "quit") {
+        running = false;
+        break;
+      }
+
+      // Prompt for next input
+      {
+        std::lock_guard<std::mutex> lock(io_mutex);
+        std::cout << "Enter command (or 'quit' to exit): \n" << std::flush;
+      }
+    } else {
+      // Handle input error
+      running = false;
+      break;
+    }
+  }
+}
+
 int main(void) {
   Channel<int> int_channel;
   Channel<std::string> string_channel;
@@ -18,53 +52,21 @@ int main(void) {
   Channel<Event> event_channel;
 
   // Producer thread
-  // std::thread producer([&] {
-  //   while (true) {
-  //     int_channel.send(42);
-  //     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-  //   }
-  // });
-
-  // std::thread producer2([&] {
-  //   while (true) {
-  //     string_channel.send("test");
-  //     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  //   }
-  // });
-  //
-  std::thread input_th([&] {
-    std::string input;
-
-    // Initial prompt
-    {
-      std::lock_guard<std::mutex> lock(io_mutex);
-      std::cout << "Enter command (or 'quit' to exit): " << std::flush;
-    }
-
-    while (running) {
-      if (std::getline(std::cin, input)) { // Check if getline succeeded
-        {
-          std::lock_guard<std::mutex> lock(io_mutex);
-          event_channel.send(Event{.type = input});
-        }
-
-        if (input == "quit") {
-          running = false;
-          break;
-        }
-
-        // Prompt for next input
-        {
-          std::lock_guard<std::mutex> lock(io_mutex);
-          std::cout << "Enter command (or 'quit' to exit): \n" << std::flush;
-        }
-      } else {
-        // Handle input error
-        running = false;
-        break;
-      }
+  std::thread producer([&] {
+    while (true) {
+      int_channel.send(42);
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
   });
+
+  std::thread producer2([&] {
+    while (true) {
+      string_channel.send("test");
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+  });
+
+  std::thread input_th(input_thread, std::ref(event_channel));
 
   std::thread consumer([&] {
     Select select{int_channel, string_channel, double_channel, event_channel};
@@ -87,15 +89,6 @@ int main(void) {
           result);
     }
   });
-
-  int counter = 0;
-  while (running) {
-    {
-      std::lock_guard<std::mutex> lock(io_mutex);
-      std::cout << "Working... " << counter++ << std::endl;
-    }
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
 
   // producer.join();
   // producer2.join();
