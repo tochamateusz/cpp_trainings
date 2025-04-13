@@ -54,19 +54,33 @@ int main(void) {
   // Producer thread
   std::thread producer([&] {
     while (true) {
+      std::chrono::time_point begin = std::chrono::steady_clock::now();
       int_channel.send(42);
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+      for (int i = 0; i < 10000000; i++) {
+      }
+
+      std::chrono::time_point end = std::chrono::steady_clock::now();
+      std::cout << "Time difference = "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end -
+                                                                         begin)
+                       .count()
+                << "[µs]" << std::endl;
+
+      std::this_thread::sleep_for(
+          std::chrono::duration<int, std::micro>(100000) -
+          std::chrono::duration_cast<std::chrono::microseconds>(end - begin));
     }
   });
 
-  std::thread producer2([&] {
-    while (true) {
-      string_channel.send("test");
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-  });
+  // std::thread producer2([&] {
+  //   while (true) {
+  //     string_channel.send("test");
+  //     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  //   }
+  // });
 
-  std::thread input_th(input_thread, std::ref(event_channel));
+  // std::thread input_th(input_thread, std::ref(event_channel));
 
   std::thread consumer([&] {
     Select select{int_channel, string_channel, double_channel, event_channel};
@@ -90,10 +104,10 @@ int main(void) {
     }
   });
 
-  // producer.join();
+  producer.join();
   // producer2.join();
   // producer3.join();
-  input_th.join();
+  // input_th.join();
   consumer.join();
 
   return 0;
